@@ -971,8 +971,8 @@ btnMute.addEventListener('click', () => {
   btnMute.classList.toggle('muted', muted);
 });
 
-window.addEventListener('scroll',    startAudio, { once: true });
-window.addEventListener('pointerdown', startAudio, { once: true });
+window.addEventListener('click',     startAudio, { once: true });
+window.addEventListener('keydown',   startAudio, { once: true });
 
 /* ═══════════════════════════════════
    MAIN LOOP
