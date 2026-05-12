@@ -1014,37 +1014,25 @@ function startHyperspace() {
     if (!startTime) startTime = ts;
     const t = Math.min(1, (ts - startTime) / DURATION);
 
-    // 5 phases :
-    // 0.00→0.28 : dérive lente (départ de station)
-    // 0.28→0.62 : accélération progressive
-    // 0.62→0.74 : climax — vitesse max, streaks longues
-    // 0.74→0.93 : décélération — streaks rétrécissent, étoiles reviennent à des points
-    // 0.93→1.00 : quasi-arrêt, flash blanc
-
+    // Courbe continue : montée douce → climax → descente douce
+    // Pas de phases segmentées — tout est interpolé
+    // Pic d'accélération à t=0.68, décélération symétrique mais plus lente
+    const PEAK = 0.68;
     let accel, streakMult;
-    if (t < 0.28) {
-      const p = t / 0.28;
-      accel = 0.3 + p * 1.8;
-      streakMult = 1 + p * 0.5;
-    } else if (t < 0.62) {
-      const p = (t - 0.28) / 0.34;
-      accel = 2.1 + Math.pow(p, 2.2) * 28;
-      streakMult = 1.5 + p * 2.5;
-    } else if (t < 0.74) {
-      accel = 30;
-      streakMult = 4;
-    } else if (t < 0.93) {
-      const p = (t - 0.74) / 0.19;
-      const ease = 1 - Math.pow(p, 0.5);
-      accel = 30 * ease + 0.4;
-      streakMult = 4 * ease + 1;
+    if (t <= PEAK) {
+      const p = t / PEAK;
+      accel = 0.4 + Math.pow(p, 1.8) * 29.6;
+      streakMult = 1 + Math.pow(p, 1.5) * 3;
     } else {
-      accel = 0.4;
-      streakMult = 1;
+      const p = (t - PEAK) / (1 - PEAK);
+      const ease = 1 - Math.pow(p, 0.55);
+      accel = 0.4 + ease * 29.6;
+      streakMult = 1 + ease * 3;
     }
 
-    // Trail plus épais pendant la décélération pour effacer les streaks vite
-    const trailOpacity = t < 0.62 ? 0.24 : t < 0.74 ? 0.14 : t < 0.93 ? 0.45 : 0.7;
+    // Trail très léger pendant la montée pour ne pas effacer les étoiles
+    // Plus fort pendant la descente pour nettoyer les streaks rapidement
+    const trailOpacity = t < PEAK ? 0.10 : 0.10 + Math.pow((t - PEAK) / (1 - PEAK), 1.5) * 0.55;
     hypCtx.fillStyle = `rgba(6,6,6,${trailOpacity})`;
     hypCtx.fillRect(0, 0, W, H);
 
