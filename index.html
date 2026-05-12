@@ -417,6 +417,52 @@ body::after { content:''; position:fixed; inset:0; background-image:url("data:im
 
 footer { padding:3.5vh 7vw;border-top:1px solid var(--g2);display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--g3); }
 
+/* ══ INTRO ══════════════════════════ */
+#intro {
+  position: fixed; inset: 0; z-index: 10000;
+  background: var(--black);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+#hyperspace-canvas {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+#intro-stars { position: absolute; inset: 0; pointer-events: none; }
+#intro-content {
+  position: relative; z-index: 2;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center;
+}
+.intro-kicker {
+  font-size: 10px; letter-spacing: .4em; text-transform: uppercase;
+  color: var(--g4); margin-bottom: 3vh;
+  opacity: 0; animation: slideUp .8s cubic-bezier(.16,1,.3,1) .3s both;
+}
+.intro-title {
+  font-size: clamp(56px, 11vw, 180px);
+  font-weight: 700; line-height: .9; letter-spacing: -.04em;
+  text-transform: uppercase;
+  opacity: 0; animation: slideUp .9s cubic-bezier(.16,1,.3,1) .5s both;
+}
+.intro-title .thin { font-weight: 100; }
+#enter-btn {
+  margin-top: 6vh;
+  background: none;
+  border: 1px solid var(--g3);
+  color: var(--white);
+  font-family: var(--font);
+  font-size: 10px; letter-spacing: .4em; text-transform: uppercase;
+  padding: 1.1rem 3.5rem;
+  cursor: none;
+  transition: border-color .3s, letter-spacing .4s;
+  opacity: 0;
+  animation: introFadeIn .8s ease 1s both;
+}
+#enter-btn:hover { border-color: var(--white); letter-spacing: .55em; }
+@keyframes introFadeIn { from { opacity:0; } to { opacity:1; } }
+
 #btn-mute {
   position: fixed;
   bottom: 3.5vh; right: 2.5vw;
@@ -437,6 +483,16 @@ footer { padding:3.5vh 7vw;border-top:1px solid var(--g2);display:flex;justify-c
 </style>
 </head>
 <body>
+
+<div id="intro">
+  <canvas id="hyperspace-canvas"></canvas>
+  <div id="intro-stars"></div>
+  <div id="intro-content">
+    <p class="intro-kicker">A Journey Through Cosmic Scale</p>
+    <h1 class="intro-title">The Scale<br><span class="thin">of Space</span></h1>
+    <button id="enter-btn">Enter the Universe</button>
+  </div>
+</div>
 
 <div id="cur"></div>
 <div id="cur-r"></div>
@@ -925,6 +981,83 @@ const scaleObs = new IntersectionObserver(e => {
   if (e[0].isIntersecting) document.getElementById('scale-section').classList.add('revealed');
 }, { threshold: 0.35 });
 scaleObs.observe(document.getElementById('scale-section'));
+
+/* ═══════════════════════════════════
+   INTRO + HYPERSPACE
+═══════════════════════════════════ */
+makeStars(document.getElementById('intro-stars'), 200);
+
+const introEl      = document.getElementById('intro');
+const introContent = document.getElementById('intro-content');
+const hypCanvas    = document.getElementById('hyperspace-canvas');
+const hypCtx       = hypCanvas.getContext('2d');
+
+function resizeHyp() { hypCanvas.width = window.innerWidth; hypCanvas.height = window.innerHeight; }
+resizeHyp();
+window.addEventListener('resize', resizeHyp);
+
+function startHyperspace() {
+  const W = hypCanvas.width, H = hypCanvas.height;
+  const cx = W / 2, cy = H / 2;
+  const STAR_COUNT = 350;
+  const stars = Array.from({length: STAR_COUNT}, () => ({
+    angle: Math.random() * Math.PI * 2,
+    dist:  Math.random() * 4 + 1,
+    speed: 0.7 + Math.random() * 0.6,
+    w:     0.4 + Math.random() * 1,
+  }));
+  let startTime = null;
+  const DURATION = 2000;
+  hypCanvas.style.opacity = '1';
+
+  function draw(ts) {
+    if (!startTime) startTime = ts;
+    const t = Math.min(1, (ts - startTime) / DURATION);
+    const accel = Math.pow(t, 1.6) * 28 + 0.3;
+
+    hypCtx.fillStyle = `rgba(6,6,6,${t < 0.75 ? 0.22 : 0.12})`;
+    hypCtx.fillRect(0, 0, W, H);
+
+    stars.forEach(s => {
+      const prev = s.dist;
+      s.dist += s.speed * accel;
+      const x1 = cx + Math.cos(s.angle) * prev;
+      const y1 = cy + Math.sin(s.angle) * prev;
+      const x2 = cx + Math.cos(s.angle) * s.dist;
+      const y2 = cy + Math.sin(s.angle) * s.dist;
+      const alpha = Math.min(1, t * 3) * 0.9;
+      hypCtx.strokeStyle = `rgba(240,240,238,${alpha})`;
+      hypCtx.lineWidth = s.w * (1 + t * 2.5);
+      hypCtx.beginPath();
+      hypCtx.moveTo(x1, y1);
+      hypCtx.lineTo(x2, y2);
+      hypCtx.stroke();
+      if (x2 < -20 || x2 > W + 20 || y2 < -20 || y2 > H + 20) {
+        s.dist = Math.random() * 4 + 1;
+        s.angle = Math.random() * Math.PI * 2;
+      }
+    });
+
+    if (t < 1) {
+      requestAnimationFrame(draw);
+    } else {
+      introEl.style.transition = 'background 0.15s ease, opacity 0.4s ease';
+      introEl.style.background = '#fff';
+      setTimeout(() => {
+        introEl.style.opacity = '0';
+        setTimeout(() => { introEl.style.display = 'none'; }, 400);
+      }, 150);
+    }
+  }
+  requestAnimationFrame(draw);
+}
+
+document.getElementById('enter-btn').addEventListener('click', () => {
+  startAudio();
+  introContent.style.transition = 'opacity 0.4s ease';
+  introContent.style.opacity = '0';
+  setTimeout(startHyperspace, 350);
+});
 
 /* ═══════════════════════════════════
    AUDIO
